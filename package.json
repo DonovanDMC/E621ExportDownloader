@@ -1,0 +1,71 @@
+{
+  "name": "e621-export-downloader",
+  "version": "1.0.0",
+  "packageManager": "pnpm@10.13.1",
+  "description": "A utility for downloading and parsing e621's exports",
+  "keywords": [
+    "e621",
+    "export",
+    "downloader",
+    "parser"
+  ],
+  "homepage": "https://github.com/DonovanDMC/E621ExportDownloader#readme",
+  "bugs": {
+    "url": "https://github.com/DonovanDMC/E621ExportDownloader/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DonovanDMC/E621ExportDownloader.git"
+  },
+  "license": "MIT",
+  "author": "Donovan_DMC <hewwo@yiff.rocks>",
+  "type": "module",
+  "types": "./dist/lib/index.d.ts",
+  "module": "./dist/lib/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/lib/index.d.ts",
+      "import": "./dist/lib/index.js"
+    }
+  },
+  "scripts": {
+    "build": "sh build.sh",
+    "lint": "eslint lib",
+    "lint:fix": "eslint lib --fix",
+    "prepack": "npm run build"
+  },
+  "devDependencies": {
+    "@swc/core": "^1.13.5",
+    "@swc/helpers": "^0.5.17",
+    "@types/debug": "^4.1.12",
+    "@types/node": "^24.3.3",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "copyfiles": "^2.4.1",
+    "eslint": "^8.57.1",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-import-newlines": "^1.4.0",
+    "eslint-plugin-jsdoc": "^50.8.0",
+    "eslint-plugin-json": "^4.0.1",
+    "eslint-plugin-prefer-arrow": "^1.2.3",
+    "eslint-plugin-unicorn": "^56.0.1",
+    "eslint-plugin-unused-imports": "^4.2.0",
+    "pnpm": "^10.16.0",
+    "rimraf": "^6.0.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.2"
+  },
+  "optionalDependencies": {
+    "persistent-debug": "^1.0.1",
+    "debug": "^4.4.1"
+  },
+  "engines": {
+    "node": ">=20.19.5",
+    "pnpm": ">=10.13.1"
+  },
+  "engineStrict": true,
+  "dependencies": {
+    "csv-parse": "^6.1.0",
+    "tslib": "^2.8.1"
+  }
+}
