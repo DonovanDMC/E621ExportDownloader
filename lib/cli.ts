@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import E621ExportDownloader from "./E621ExportDownloader.js";
 import { type ExportName } from "./types.js";
 import pkg from "../package.json" with { type: "json" };

@@ -1,6 +1,6 @@
 {
   "name": "e621-export-downloader",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "packageManager": "pnpm@10.13.1",
   "description": "A utility for downloading and parsing e621's exports",
   "keywords": [
