@@ -81,3 +81,30 @@ const client = new E621ExportDownloader({
     }
 });
 ```
+
+## CLI
+```bash
+# check if an export exists for a given date, date is optional and defaults to today
+# outputs "true" or "false" with no trailing newline
+npx e621-export-downloader exists posts 2024-01-01
+
+# download an export for a given date, date is optional and defaults to today
+# outputs the path to the downloaded file with no trailing newline
+npx e621-export-downloader download posts 2024-01-01
+
+# read an export for a given date, as individual JSON lines, date is optional and defaults to today
+# outputs each record as a JSON string on its own line
+npx e621-export-downloader read posts 2024-01-01
+
+# read an export for a given date, as a JSON array, date is optional and defaults to today
+# outputs the entire export as a JSON array with no trailing newline
+# this still streams the csv, so it's safe to use with large exports
+npx e621-export-downloader read-all posts 2024-01-01
+
+npx e621-export-downloader --help
+npx e621-export-downloader --version
+npx e621-export-downloader --cache # enable caching
+npx e621-export-downloader --no-cache # disable caching (default)
+npx e621-export-downloader --rewind-on-not-found # enable rewinding of export dates
+npx e621-export-downloader --no-rewind-on-not-found # disable rewinding of export dates (default)
+```
