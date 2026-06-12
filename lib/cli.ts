@@ -4,78 +4,76 @@ import { type ExportName } from "./types.js";
 import pkg from "../package.json" with { type: "json" };
 import { program } from "commander";
 
-const options = program.storeOptionsAsProperties<{ cache?: boolean; noCache?: boolean; noRewindOnNotFound?: boolean; rewindOnNotFound?: boolean | number; }>();
+const options = program.storeOptionsAsProperties<{ cache?: boolean; noCache?: boolean; }>();
 
 program.name("e621-export-downloader")
     .description(pkg.description)
     .version(pkg.version)
     .option("--cache", "If downloaded exports should be cached for future use")
-    .option("--no-cache", "Disable caching of downloaded exports (default)")
-    .option("--rewind-on-not-found [days]", "If the date should be decreased by one day if no export is found. Provide a number to limit how many days can be rewound.")
-    .option("--no-rewind-on-not-found", "Disable rewinding of export dates (default)");
+    .option("--no-cache", "Disable caching of downloaded exports (default)");
+
+program
+    .command("data")
+    .description("Get export metadata from the e621 API as a JSON array")
+    .action(async () => {
+        const client = new E621ExportDownloader();
+        const data = await client.getData();
+        process.stdout.write(JSON.stringify(data));
+    });
 
 program
     .command("exists")
-    .description("Check if an export exists for a given date")
+    .description("Check if an export exists")
     .argument("<name>", "The name of the export")
-    .argument("[date]", "The date of the export in YYYY-MM-DD format, defaults to today")
-    .action(async (name: ExportName, dateStr: string | undefined) => {
-        const date = dateStr ? new Date(dateStr) : new Date();
+    .action(async (name: ExportName) => {
         const client = new E621ExportDownloader({
-            cache:            options.cache ?? options.noCache === undefined ? undefined : !options.noCache,
-            rewindOnNotFound: options.rewindOnNotFound ?? options.noRewindOnNotFound === undefined ? undefined : !options.noRewindOnNotFound
+            cache: options.cache ?? options.noCache === undefined ? undefined : !options.noCache
         });
-        await client.get(name).exists(date).then(exists => process.stdout.write(String(exists)));
+        const exists = await (await client.get(name)).exists();
+        process.stdout.write(String(exists));
     });
 
 program
     .command("download")
-    .description("Download an export for a given date")
+    .description("Download an export")
     .argument("<name>", "The name of the export")
-    .argument("[date]", "The date of the export in YYYY-MM-DD format, defaults to today")
-    .action(async (name: ExportName, dateStr: string | undefined) => {
-        const date = dateStr ? new Date(dateStr) : new Date();
+    .action(async (name: ExportName) => {
         const client = new E621ExportDownloader({
-            rewindOnNotFound: options.rewindOnNotFound ?? options.noRewindOnNotFound === undefined ? undefined : !options.noRewindOnNotFound
+            cache: options.cache ?? options.noCache === undefined ? undefined : !options.noCache
         });
-        await client.get(name).download(date).then(path => process.stdout.write(path));
+        const path = await (await client.get(name)).download();
+        process.stdout.write(path);
     });
 
 program
     .command("read")
-    .description("Read an export for a given date, as individual JSON lines")
+    .description("Read an export as individual JSON lines")
     .argument("<name>", "The name of the export")
-    .argument("[date]", "The date of the export in YYYY-MM-DD format, defaults to today")
-    .action(async (name: ExportName, dateStr: string | undefined) => {
-        const date = dateStr ? new Date(dateStr) : new Date();
+    .action(async (name: ExportName) => {
         const client = new E621ExportDownloader({
-            cache:            options.cache ?? options.noCache === undefined ? undefined : !options.noCache,
-            rewindOnNotFound: options.rewindOnNotFound ?? options.noRewindOnNotFound === undefined ? undefined : !options.noRewindOnNotFound
+            cache: options.cache ?? options.noCache === undefined ? undefined : !options.noCache
         });
-        for await (const [line] of client.get(name).read(date)) {
-            process.stdout.write("\n");
+        for await (const [line] of (await client.get(name)).read()) {
             process.stdout.write(JSON.stringify(line));
+            process.stdout.write("\n");
         }
-        process.stdout.write("\b");
     });
 
 program
     .command("read-all")
-    .description("Read an export for a given date, as a JSON array")
+    .description("Read an export as a JSON array")
     .argument("<name>", "The name of the export")
-    .argument("[date]", "The date of the export in YYYY-MM-DD format, defaults to today")
-    .action(async (name: ExportName, dateStr: string | undefined) => {
-        const date = dateStr ? new Date(dateStr) : new Date();
+    .action(async (name: ExportName) => {
         const client = new E621ExportDownloader({
-            cache:            options.cache ?? options.noCache === undefined ? undefined : !options.noCache,
-            rewindOnNotFound: options.rewindOnNotFound ?? options.noRewindOnNotFound === undefined ? undefined : !options.noRewindOnNotFound
+            cache: options.cache ?? options.noCache === undefined ? undefined : !options.noCache
         });
+        let first = true;
         process.stdout.write("[");
-        for await (const [line] of client.get(name).read(date)) {
+        for await (const [line] of (await client.get(name)).read()) {
+            if (!first) process.stdout.write(",");
             process.stdout.write(JSON.stringify(line));
-            process.stdout.write(",");
+            first = false;
         }
-        process.stdout.write("\b");
         process.stdout.write("]");
     });
 

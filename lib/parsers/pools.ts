@@ -1,4 +1,5 @@
 import type { PoolCategory, RawPool } from "../types.js";
+import { pgArray } from "../util.js";
 import type { CastingContext } from "csv-parse";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -11,8 +12,7 @@ export function parse(record: RawPool, _context: CastingContext): PoolData {
         id:          Number(record.id),
         is_active:   record.is_active === "t",
         name:        record.name,
-        // raw postgres array format ({1,2,3})
-        post_ids:    record.post_ids.slice(1, -1).split(",").map(Number),
+        post_ids:    pgArray(record.post_ids).map(Number),
         updated_at:  record.updated_at === "" ? null : new Date(record.updated_at)
     };
 }

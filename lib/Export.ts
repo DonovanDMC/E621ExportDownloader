@@ -1,7 +1,7 @@
-import { EXPORT_URL, TEMP_DIR, USER_AGENT } from "./Constants.js";
-import type ExportHelper from "./ExportHelper.js";
-import type { ExportName } from "./types.js";
+import { TEMP_DIR, USER_AGENT } from "./Constants.js";
+import type { APIExportData, ExportName, Parser } from "./types.js";
 import Debug from "./Debug.js";
+import type E621ExportDownloader from "./E621ExportDownloader.js";
 import { parse } from "csv-parse";
 import { pipeline } from "node:stream/promises";
 import { createReadStream, createWriteStream } from "node:fs";
@@ -10,35 +10,38 @@ import { access, constants, mkdir, unlink } from "node:fs/promises";
 import { createGunzip } from "node:zlib";
 
 export default class Export<N extends ExportName, R extends object = object, D extends object = object> {
-    date: Date;
+    client: E621ExportDownloader;
+    data: APIExportData;
     /** If undefined, no check has been performed yet */
     downloaded: boolean | undefined;
-    helper: ExportHelper<N, R, D>;
-    constructor(date: Date, helper: ExportHelper<N, R, D>) {
-        this.date = new Date(date.getTime());
-        this.date.setUTCHours(0, 0, 0, 0);
-        this.helper = helper;
+    name: N;
+    parser: Parser<R, D>;
+    constructor(name: N, parser: Parser<R, D>, client: E621ExportDownloader, data: APIExportData) {
+        this.data = data;
+        this.client = client;
+        this.name = name;
+        this.parser = parser;
     }
 
     private _formatDate(): string {
-        return this.date.toISOString().split("T")[0]!;
+        return this.data.updated_at.split("T")[0]!;
     }
 
     private async checkDownloaded(): Promise<boolean> {
         if (this.downloaded !== undefined) return this.downloaded;
         this.downloaded = await access(this.filePath, constants.F_OK | constants.W_OK).then(() => true, () => false);
-        Debug(`export:${this._formatDate()}`, "checked downloaded state for %s: %s", this.helper.name, this.downloaded);
+        Debug(`export:${this.name}`, "checked downloaded state: %s", this.downloaded);
         return this.downloaded;
     }
 
     private get filePath(): string {
-        return join(TEMP_DIR, `${this.helper.name}-${this._formatDate()}.csv`);
+        return join(TEMP_DIR, `${this.name}-${this._formatDate()}.csv`);
     }
 
     async delete(): Promise<boolean> {
         const exists = await this.checkDownloaded();
         if (!exists) return false;
-        Debug(`export:${this._formatDate()}`, "deleting cached export for %s", this.helper.name);
+        Debug(`export:${this.name}`, "deleting cached export");
         await unlink(this.filePath);
         this.downloaded = false;
         return true;
@@ -46,44 +49,44 @@ export default class Export<N extends ExportName, R extends object = object, D e
 
     async download(): Promise<string> {
         if (!await this.exists()) {
-            throw new Error(`Export ${this.helper.name} for ${this._formatDate()} does not exist`);
+            throw new Error(`Export ${this.name} does not exist`);
         }
         if (await this.checkDownloaded()) {
-            Debug(`export:${this._formatDate()}`, "using cached export for %s", this.helper.name);
+            Debug(`export:${this.name}`, "using cached export");
             return this.filePath;
         }
-        Debug(`export:${this._formatDate()}`, "downloading export for %s", this.helper.name);
-        const response = await fetch(EXPORT_URL(this.helper.name, this.date), { headers: { "User-Agent": USER_AGENT } });
+        Debug(`export:${this.name}`, "downloading export");
+        const response = await fetch(this.data.url, { headers: { "User-Agent": USER_AGENT } });
         if (!response.ok) {
-            throw new Error(`Failed to download export ${this.helper.name} for ${this._formatDate()}: ${response.status} ${response.statusText}`);
+            throw new Error(`Failed to download export ${this.name}: ${response.status} ${response.statusText}`);
         }
 
         await mkdir(dirname(this.filePath), { recursive: true });
         const tempFile = this.filePath;
         await pipeline(response.body!, createGunzip(), createWriteStream(tempFile));
         this.downloaded = true;
-        Debug(`export:${this._formatDate()}`, "download complete for %s: %s", this.helper.name, tempFile);
+        Debug(`export:${this.name}`, "download complete: %s", tempFile);
         return tempFile;
     }
 
     async exists(): Promise<boolean> {
-        return fetch(EXPORT_URL(this.helper.name, this.date), { method: "HEAD", headers: { "User-Agent": USER_AGENT } })
+        return fetch(this.data.url, { method: "HEAD", headers: { "User-Agent": USER_AGENT } })
             .then(res => {
-                Debug(`export:${this._formatDate()}`, "checked export existence for %s: %s", this.helper.name, res.ok);
+                Debug(`export:${this.name}`, "checked export existence: %s", res.ok);
                 return res.ok;
             })
             .catch(() => {
-                Debug(`export:${this._formatDate()}`, "failed to check export existence for %s", this.helper.name);
+                Debug(`export:${this.name}`, "failed to check export existence");
                 return false;
             });
     }
 
     async * read(): AsyncGenerator<[record: D, rowCount: number]> {
         if (!(await this.checkDownloaded())) await this.download();
-        Debug(`export:${this._formatDate()}`, "reading export for %s", this.helper.name);
+        Debug(`export:${this.name}`, "reading export");
         const csv = parse<unknown>({
             columns:  true,
-            onRecord: (record, context) => this.helper.parser(record as R, context)
+            onRecord: (record, context) => this.parser(record as R, context)
         });
         await new Promise<void>(resolve => {
             const stream = createReadStream(this.filePath);
@@ -94,13 +97,12 @@ export default class Export<N extends ExportName, R extends object = object, D e
         for await (const record of csv) {
             yield [record, csv.info.records];
         }
-        Debug(`export:${this._formatDate()}`, "finished reading export for %s", this.helper.name);
-        if (!this.helper.client.options.cache) await this.delete();
+        Debug(`export:${this.name}`, "finished reading export");
+        if (!this.client.options.cache) await this.delete();
     }
 
     async readAll(): Promise<Array<D>> {
-        if (!(await this.checkDownloaded())) await this.download();
-        Debug(`export:${this._formatDate()}`, "reading all records for %s", this.helper.name);
+        Debug(`export:${this.name}`, "reading all records");
         const results: Array<D> = [];
         for await (const [record] of this.read()) {
             results.push(record);

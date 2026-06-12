@@ -1,5 +1,9 @@
+export { parse as parseArtist, type ArtistData } from "./artists.js";
+export { parse as parseBulkUpdateRequest, type BulkUpdateRequestData } from "./bulk_update_requests.js";
 export { parse as parsePool, type PoolData } from "./pools.js";
 export { parse as parsePost, type PostData } from "./posts.js";
+export { parse as parsePostReplacement, type PostReplacementData } from "./post_replacements.js";
+export { parse as parsePostVersion, type PostVersionData } from "./post_versions.js";
 export { parse as parseTag, type TagData } from "./tags.js";
 export { parse as parseTagAlias, type TagAliasData } from "./tag_aliases.js";
 export { parse as parseTagImplication, type TagImplicationData } from "./tag_implications.js";

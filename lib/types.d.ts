@@ -8,6 +8,32 @@ export type TagRelationshipStatus = "active" | "deleted" | "pending" | "processi
 export type ExportName = typeof EXPORT_NAMES[number];
 export type Parser<R extends object, D extends object> = (this: void, record: R, context: CastingContext) => D | null | undefined;
 
+export interface RawArtist {
+    created_at: string;
+    creator_id: string;
+    group_name: string;
+    id: string;
+    is_active: TF;
+    is_locked: TF;
+    linked_user_id: string;
+    name: string;
+    other_names: string;
+    updated_at: string;
+    urls: string;
+}
+
+export interface RawBulkUpdateRequest {
+    approver_id: string;
+    created_at: string;
+    forum_topic_id: string;
+    id: string;
+    script: string;
+    status: string;
+    title: string;
+    updated_at: string;
+    user_id: string;
+}
+
 export interface RawPool {
     category: "series" | "collection";
     created_at: string;
@@ -52,6 +78,47 @@ export interface RawPost {
     uploader_id: string;
 }
 
+export interface RawPostReplacement {
+    approver_id: string;
+    created_at: string;
+    creator_id: string;
+    file_ext: string;
+    file_name: string;
+    file_size: string;
+    id: string;
+    image_height: string;
+    image_width: string;
+    md5: string;
+    post_id: string;
+    reason: string;
+    source: string;
+    status: string;
+    updated_at: string;
+}
+
+export interface RawPostVersion {
+    added_locked_tags: string;
+    added_tags: string;
+    description: string;
+    description_changed: TF;
+    id: string;
+    locked_tags: string;
+    parent_changed: TF;
+    parent_id: string;
+    post_id: string;
+    rating: Rating | "";
+    rating_changed: TF;
+    reason: string;
+    removed_locked_tags: string;
+    removed_tags: string;
+    source: string;
+    source_changed: TF;
+    tags: string;
+    updated_at: string;
+    updater_id: string;
+    version: string;
+}
+
 export interface RawTagAlias {
     antecedent_name: string;
     consequent_name: string;
@@ -84,4 +151,12 @@ export interface RawWikiPage {
     title: string;
     updated_at: string;
     updater_id: string;
+}
+
+export interface APIExportData {
+    file_name: string;
+    file_size: number;
+    name: ExportName;
+    updated_at: string;
+    url: string;
 }
