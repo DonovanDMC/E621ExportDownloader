@@ -13,6 +13,7 @@ export function parse(record: RawPostVersion, _context: CastingContext): PostVer
         locked_tags:         record.locked_tags === "" ? null : record.locked_tags,
         parent_changed:      record.parent_changed === "t",
         parent_id:           record.parent_id === "" ? null : Number(record.parent_id),
+        post_id:             Number(record.post_id),
         rating:              record.rating === "" ? null : record.rating,
         rating_changed:      record.rating_changed === "t",
         reason:              record.reason === "" ? null : record.reason,
@@ -36,6 +37,7 @@ export interface PostVersionData {
     locked_tags: string | null;
     parent_changed: boolean;
     parent_id: number | null;
+    post_id: number;
     rating: Rating | null;
     rating_changed: boolean;
     reason: string | null;
