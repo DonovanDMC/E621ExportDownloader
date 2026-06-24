@@ -9,27 +9,31 @@ export type ExportName = typeof EXPORT_NAMES[number];
 export type Parser<R extends object, D extends object> = (this: void, record: R, context: CastingContext) => D | null | undefined;
 
 export interface RawArtist {
+    active_urls: string;
     created_at: string;
     creator_id: string;
     group_name: string;
     id: string;
+    inactive_urls: string;
     is_active: TF;
     is_locked: TF;
     linked_user_id: string;
     name: string;
     other_names: string;
     updated_at: string;
-    urls: string;
 }
 
 export interface RawBulkUpdateRequest {
     approver_id: string;
     created_at: string;
+    down_votes: number;
     forum_topic_id: string;
     id: string;
+    meh_votes: number;
     script: string;
     status: string;
     title: string;
+    up_votes: number;
     updated_at: string;
     user_id: string;
 }
@@ -48,6 +52,7 @@ export interface RawPool {
 
 export interface RawPost {
     approver_id: string;
+    bg_color: string;
     change_seq: string;
     comment_count: string;
     created_at: string;
@@ -66,8 +71,10 @@ export interface RawPost {
     is_pending: TF;
     is_rating_locked: TF;
     is_status_locked: TF;
+    last_commented_at: string;
+    last_noted_at: string;
     locked_tags: string;
-    md5: string | null;
+    md5: string;
     parent_id: string;
     rating: Rating;
     score: string;
@@ -121,18 +128,38 @@ export interface RawPostVersion {
 
 export interface RawTagAlias {
     antecedent_name: string;
+    approver_id: string;
     consequent_name: string;
     created_at: string;
+    // creator_id: string;
+    down_votes: string;
+    forum_post_id: string;
+    forum_topic_id: string;
     id: string;
+    meh_votes: string;
+    post_count: string;
+    reason: string;
     status: string;
+    up_votes: string;
+    updated_at: string;
 }
 
 export interface RawTagImplication {
     antecedent_name: string;
+    approver_id: string;
     consequent_name: string;
     created_at: string;
+    // creator_id: string;
+    descendant_names: string;
+    down_votes: string;
+    forum_post_id: string;
+    forum_topic_id: string;
     id: string;
+    meh_votes: string;
+    reason: string;
     status: string;
+    up_votes: string;
+    updated_at: string;
 }
 
 export interface RawTag {
@@ -148,6 +175,7 @@ export interface RawWikiPage {
     creator_id: string;
     id: string;
     is_locked: TF;
+    parent: string | null;
     title: string;
     updated_at: string;
     updater_id: string;
