@@ -33,12 +33,14 @@ import type {
     RawTagImplication,
     RawWikiPage,
     Parser,
-    ExportName,
-    APIExportData
+    ExportName
 } from "./types.js";
 import Debug from "./Debug.js";
 import { USER_AGENT } from "./Constants.js";
 import DeferredExport from "./DeferredExport.js";
+import { createE621Client, createStandalone } from "e621/standalone";
+import DBExports from "e621/modules/DbExports";
+import { DBExport } from "e621";
 
 export interface Options<Artist extends object = ArtistData, BulkUpdateRequest extends object = BulkUpdateRequestData, Pool extends object = PoolData, Post extends object = PostData, PostReplacement extends object = PostReplacementData, PostVersion extends object = PostVersionData, Tag extends object = TagData, TagAlias extends object = TagAliasData, TagImplication extends object = TagImplicationData, WikiPage extends object = WikiPageData> {
     /**
@@ -91,7 +93,8 @@ interface ClientOptions<Artist extends object = ArtistData, BulkUpdateRequest ex
 }
 
 export default class E621ExportDownloader<Artist extends object = ArtistData, BulkUpdateRequest extends object = BulkUpdateRequestData, Pool extends object = PoolData, Post extends object = PostData, PostReplacement extends object = PostReplacementData, PostVersion extends object = PostVersionData, Tag extends object = TagData, TagAlias extends object = TagAliasData, TagImplication extends object = TagImplicationData, WikiPage extends object = WikiPageData> {
-    private _exportCache: Array<APIExportData> | null = null;
+    private _exportCache: Array<DBExport> | null = null;
+    e621: ReturnType<typeof createStandalone<(typeof DBExports)[]>>;
     options: ClientOptions<Artist, BulkUpdateRequest, Pool, Post, PostReplacement, PostVersion, Tag, TagAlias, TagImplication, WikiPage>;
     constructor(options?: Options<Artist, BulkUpdateRequest, Pool, Post, PostReplacement, PostVersion, Tag, TagAlias, TagImplication, WikiPage>) {
         this.options = {
@@ -111,6 +114,7 @@ export default class E621ExportDownloader<Artist extends object = ArtistData, Bu
         };
         const overridenParsers = Object.keys(options?.parsers ?? {}) as Array<ExportName>;
         Debug("client", "initialized client with overridden parsers: %o, cache=%s", overridenParsers, this.options.cache);
+        this.e621 = createStandalone([DBExports], createE621Client({ userAgent: USER_AGENT }));
     }
 
     async get(name: "artists"): Promise<Export<"artists", RawArtist, Artist>>;
@@ -134,17 +138,13 @@ export default class E621ExportDownloader<Artist extends object = ArtistData, Bu
     }
 
     /** Gat an export's api data. */
-    async getData(): Promise<Array<APIExportData>> {
+    async getData(): Promise<Array<DBExport>> {
         if (this._exportCache !== null) return this._exportCache;
         Debug("client", "fetching export data from api");
-        return (this._exportCache! ??= await fetch("https://e621.net/db_exports.json", { headers: { "User-Agent": USER_AGENT } })
-            .then(async req => {
-                if (req.status !== 200) throw new Error(`Failed to fetch exports: ${req.status} ${req.statusText}`);
-                const data = await req.json() as Array<APIExportData>;
-                const latest = data.toSorted((a, b) => new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime()).at(-1)!;
-                Debug("client", `Export data resolved: ${latest.updated_at}`);
-                return data;
-            }));
+        const data = this._exportCache = await this.e621.dbExports.get();
+        const latest = data.toSorted((a, b) => new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime()).at(-1)!;
+        Debug("client", `Export data resolved: ${latest.updated_at}`);
+        return data;
     }
 
     getDeferred(name: "artists"): DeferredExport<"artists", RawArtist, Artist>;

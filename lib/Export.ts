@@ -1,5 +1,5 @@
 import { TEMP_DIR, USER_AGENT } from "./Constants.js";
-import type { APIExportData, ExportName, Parser } from "./types.js";
+import type { Parser } from "./types.js";
 import Debug from "./Debug.js";
 import type E621ExportDownloader from "./E621ExportDownloader.js";
 import { parse } from "csv-parse";
@@ -8,15 +8,17 @@ import { createReadStream, createWriteStream } from "node:fs";
 import { dirname, join } from "node:path";
 import { access, constants, mkdir, unlink } from "node:fs/promises";
 import { createGunzip } from "node:zlib";
+import { DBExport } from "e621";
+import { DbExportNames } from "e621/generated/types";
 
-export default class Export<N extends ExportName, R extends object = object, D extends object = object> {
+export default class Export<N extends DbExportNames, R extends object = object, D extends object = object> {
     client: E621ExportDownloader;
-    data: APIExportData;
+    data: DBExport;
     /** If undefined, no check has been performed yet */
     downloaded: boolean | undefined;
     name: N;
     parser: Parser<R, D>;
-    constructor(name: N, parser: Parser<R, D>, client: E621ExportDownloader, data: APIExportData) {
+    constructor(name: N, parser: Parser<R, D>, client: E621ExportDownloader, data: DBExport) {
         this.data = data;
         this.client = client;
         this.name = name;

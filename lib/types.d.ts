@@ -1,12 +1,11 @@
-import type { EXPORT_NAMES } from "./Constants.ts";
 import type { CastingContext } from "csv-parse";
+import { TagRequestStatuses } from "e621/generated/types";
+import { DbExportNames as ExportName, TagRequestStatuses as TagRelationshipStatus, Ratings as Rating, PoolCategories as PoolCategory } from "e621/generated/types";
 
 export type TF = "t" | "f";
-export type Rating = "s" | "q" | "e";
-export type PoolCategory = "series" | "collection";
-export type TagRelationshipStatus = "active" | "deleted" | "pending" | "processing" | "queued" | "retired" | `error: ${string}`;
-export type ExportName = typeof EXPORT_NAMES[number];
 export type Parser<R extends object, D extends object> = (this: void, record: R, context: CastingContext) => D | null | undefined;
+
+export { ExportName, TagRelationshipStatus, Rating, PoolCategory };
 
 export interface RawArtist {
     active_urls: string;
@@ -39,7 +38,7 @@ export interface RawBulkUpdateRequest {
 }
 
 export interface RawPool {
-    category: "series" | "collection";
+    category: PoolCategory;
     created_at: string;
     creator_id: string;
     description: string;
@@ -179,12 +178,4 @@ export interface RawWikiPage {
     title: string;
     updated_at: string;
     updater_id: string;
-}
-
-export interface APIExportData {
-    file_name: string;
-    file_size: number;
-    name: ExportName;
-    updated_at: string;
-    url: string;
 }
