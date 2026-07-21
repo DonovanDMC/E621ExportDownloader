@@ -3,13 +3,13 @@ import type { Parser } from "./types.js";
 import Debug from "./Debug.js";
 import type E621ExportDownloader from "./E621ExportDownloader.js";
 import { parse } from "csv-parse";
+import { type DBExport } from "e621";
+import { type DbExportNames } from "e621/generated/types";
 import { pipeline } from "node:stream/promises";
 import { createReadStream, createWriteStream } from "node:fs";
 import { dirname, join } from "node:path";
 import { access, constants, mkdir, unlink } from "node:fs/promises";
 import { createGunzip } from "node:zlib";
-import { DBExport } from "e621";
-import { DbExportNames } from "e621/generated/types";
 
 export default class Export<N extends DbExportNames, R extends object = object, D extends object = object> {
     client: E621ExportDownloader;

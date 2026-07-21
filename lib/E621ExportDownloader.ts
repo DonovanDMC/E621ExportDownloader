@@ -40,7 +40,7 @@ import { USER_AGENT } from "./Constants.js";
 import DeferredExport from "./DeferredExport.js";
 import { createE621Client, createStandalone } from "e621/standalone";
 import DBExports from "e621/modules/DbExports";
-import { DBExport } from "e621";
+import { type DBExport } from "e621";
 
 export interface Options<Artist extends object = ArtistData, BulkUpdateRequest extends object = BulkUpdateRequestData, Pool extends object = PoolData, Post extends object = PostData, PostReplacement extends object = PostReplacementData, PostVersion extends object = PostVersionData, Tag extends object = TagData, TagAlias extends object = TagAliasData, TagImplication extends object = TagImplicationData, WikiPage extends object = WikiPageData> {
     /**
@@ -94,7 +94,7 @@ interface ClientOptions<Artist extends object = ArtistData, BulkUpdateRequest ex
 
 export default class E621ExportDownloader<Artist extends object = ArtistData, BulkUpdateRequest extends object = BulkUpdateRequestData, Pool extends object = PoolData, Post extends object = PostData, PostReplacement extends object = PostReplacementData, PostVersion extends object = PostVersionData, Tag extends object = TagData, TagAlias extends object = TagAliasData, TagImplication extends object = TagImplicationData, WikiPage extends object = WikiPageData> {
     private _exportCache: Array<DBExport> | null = null;
-    e621: ReturnType<typeof createStandalone<(typeof DBExports)[]>>;
+    e621: ReturnType<typeof createStandalone<Array<typeof DBExports>>>;
     options: ClientOptions<Artist, BulkUpdateRequest, Pool, Post, PostReplacement, PostVersion, Tag, TagAlias, TagImplication, WikiPage>;
     constructor(options?: Options<Artist, BulkUpdateRequest, Pool, Post, PostReplacement, PostVersion, Tag, TagAlias, TagImplication, WikiPage>) {
         this.options = {
@@ -117,19 +117,29 @@ export default class E621ExportDownloader<Artist extends object = ArtistData, Bu
         this.e621 = createStandalone([DBExports], createE621Client({ userAgent: USER_AGENT }));
     }
 
+    /** Download the export and get its info. */
     async get(name: "artists"): Promise<Export<"artists", RawArtist, Artist>>;
+    /** Download the export and get its info. */
     async get(name: "bulk_update_requests"): Promise<Export<"bulk_update_requests", RawBulkUpdateRequest, BulkUpdateRequest>>;
+    /** Download the export and get its info. */
     async get(name: "pools"): Promise<Export<"pools", RawPool, Pool>>;
+    /** Download the export and get its info. */
     async get(name: "posts"): Promise<Export<"posts", RawPost, Post>>;
+    /** Download the export and get its info. */
     async get(name: "post_replacements"): Promise<Export<"post_replacements", RawPostReplacement, PostReplacement>>;
+    /** Download the export and get its info. */
     async get(name: "post_versions"): Promise<Export<"post_versions", RawPostVersion, PostVersion>>;
+    /** Download the export and get its info. */
     async get(name: "tags"): Promise<Export<"tags", RawTag, Tag>>;
+    /** Download the export and get its info. */
     async get(name: "tag_aliases"): Promise<Export<"tag_aliases", RawTagAlias, TagAlias>>;
+    /** Download the export and get its info. */
     async get(name: "tag_implications"): Promise<Export<"tag_implications", RawTagImplication, TagImplication>>;
+    /** Download the export and get its info. */
     async get(name: "wiki_pages"): Promise<Export<"wiki_pages", RawWikiPage, WikiPage>>;
+    /** Download the export and get its info. */
     async get(name: ExportName): Promise<Export<"artists", RawArtist, Artist> | Export<"bulk_update_requests", RawBulkUpdateRequest, BulkUpdateRequest> | Export<"pools", RawPool, Pool> | Export<"posts", RawPost, Post> | Export<"post_replacements", RawPostReplacement, PostReplacement> | Export<"post_versions", RawPostVersion, PostVersion> | Export<"tag_aliases", RawTagAlias, TagAlias> | Export<"tag_implications", RawTagImplication, TagImplication> | Export<"tags", RawTag, Tag> | Export<"wiki_pages", RawWikiPage, WikiPage>>;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    /** Download the export and get its info. */
     async get(name: ExportName): Promise<Export<any, any, any>> {
         const data = (await this.getData()).find(d => d.name === name);
         if (!data) throw new Error(`Export data for "${name}" not found.`);
@@ -147,54 +157,84 @@ export default class E621ExportDownloader<Artist extends object = ArtistData, Bu
         return data;
     }
 
+    /** Defers downlaoding the export until methods are called. */
     getDeferred(name: "artists"): DeferredExport<"artists", RawArtist, Artist>;
+    /** Defers downlaoding the export until methods are called. */
     getDeferred(name: "bulk_update_requests"): DeferredExport<"bulk_update_requests", RawBulkUpdateRequest, BulkUpdateRequest>;
+    /** Defers downlaoding the export until methods are called. */
     getDeferred(name: "pools"): DeferredExport<"pools", RawPool, Pool>;
+    /** Defers downlaoding the export until methods are called. */
     getDeferred(name: "posts"): DeferredExport<"posts", RawPost, Post>;
+    /** Defers downlaoding the export until methods are called. */
     getDeferred(name: "post_replacements"): DeferredExport<"post_replacements", RawPostReplacement, PostReplacement>;
+    /** Defers downlaoding the export until methods are called. */
     getDeferred(name: "post_versions"): DeferredExport<"post_versions", RawPostVersion, PostVersion>;
+    /** Defers downlaoding the export until methods are called. */
     getDeferred(name: "tags"): DeferredExport<"tags", RawTag, Tag>;
+    /** Defers downlaoding the export until methods are called. */
     getDeferred(name: "tag_aliases"): DeferredExport<"tag_aliases", RawTagAlias, TagAlias>;
+    /** Defers downlaoding the export until methods are called. */
     getDeferred(name: "tag_implications"): DeferredExport<"tag_implications", RawTagImplication, TagImplication>;
+    /** Defers downlaoding the export until methods are called. */
     getDeferred(name: "wiki_pages"): DeferredExport<"wiki_pages", RawWikiPage, WikiPage>;
+    /** Defers downlaoding the export until methods are called. */
     getDeferred(name: ExportName): DeferredExport<"artists", RawArtist, Artist> | DeferredExport<"bulk_update_requests", RawBulkUpdateRequest, BulkUpdateRequest> | DeferredExport<"pools", RawPool, Pool> | DeferredExport<"posts", RawPost, Post> | DeferredExport<"post_replacements", RawPostReplacement, PostReplacement> | DeferredExport<"post_versions", RawPostVersion, PostVersion> | DeferredExport<"tag_aliases", RawTagAlias, TagAlias> | DeferredExport<"tag_implications", RawTagImplication, TagImplication> | DeferredExport<"tags", RawTag, Tag> | DeferredExport<"wiki_pages", RawWikiPage, WikiPage>;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    /** Defers downlaoding the export until methods are called. */
     getDeferred(name: ExportName): DeferredExport<any, any, any> {
         Debug("client", "creating deferred export for %s ", name);
         return new DeferredExport(name, this.options.parsers[name] as never, this as never) as never;
     }
 
-    getDeferredReader(name: "artists"): AsyncGenerator<[record: Artist, rowCount: number]>;
-    getDeferredReader(name: "bulk_update_requests"): AsyncGenerator<[record: BulkUpdateRequest, rowCount: number]>;
-    getDeferredReader(name: "pools"): AsyncGenerator<[record: Pool, rowCount: number]>;
-    getDeferredReader(name: "posts"): AsyncGenerator<[record: Post, rowCount: number]>;
-    getDeferredReader(name: "post_replacements"): AsyncGenerator<[record: PostReplacement, rowCount: number]>;
-    getDeferredReader(name: "post_versions"): AsyncGenerator<[record: PostVersion, rowCount: number]>;
-    getDeferredReader(name: "tags"): AsyncGenerator<[record: Tag, rowCount: number]>;
-    getDeferredReader(name: "tag_aliases"): AsyncGenerator<[record: TagAlias, rowCount: number]>;
-    getDeferredReader(name: "tag_implications"): AsyncGenerator<[record: TagImplication, rowCount: number]>;
-    getDeferredReader(name: "wiki_pages"): AsyncGenerator<[record: WikiPage, rowCount: number]>;
-    getDeferredReader(name: ExportName): AsyncGenerator<[record: Artist, rowCount: number]> | AsyncGenerator<[record: BulkUpdateRequest, rowCount: number]> | AsyncGenerator<[record: Pool, rowCount: number]> | AsyncGenerator<[record: Post, rowCount: number]> | AsyncGenerator<[record: PostReplacement, rowCount: number]> | AsyncGenerator<[record: PostVersion, rowCount: number]> | AsyncGenerator<[record: Tag, rowCount: number]> | AsyncGenerator<[record: TagAlias, rowCount: number]> | AsyncGenerator<[record: TagImplication, rowCount: number]> | AsyncGenerator<[record: WikiPage, rowCount: number]> | AsyncGenerator<[record: WikiPage, rowCount: number]>;
     /** Returns a reader directly, defers downlaoding the export until the reader is used. */
+    getDeferredReader(name: "artists"): AsyncGenerator<[record: Artist, rowCount: number]>;
+    /** Returns a reader directly, defers downlaoding the export until the reader is used. */
+    getDeferredReader(name: "bulk_update_requests"): AsyncGenerator<[record: BulkUpdateRequest, rowCount: number]>;
+    /** Returns a reader directly, defers downlaoding the export until the reader is used. */
+    getDeferredReader(name: "pools"): AsyncGenerator<[record: Pool, rowCount: number]>;
+    /** Returns a reader directly, defers downlaoding the export until the reader is used. */
+    getDeferredReader(name: "posts"): AsyncGenerator<[record: Post, rowCount: number]>;
+    /** Returns a reader directly, defers downlaoding the export until the reader is used. */
+    getDeferredReader(name: "post_replacements"): AsyncGenerator<[record: PostReplacement, rowCount: number]>;
+    /** Returns a reader directly, defers downlaoding the export until the reader is used. */
+    getDeferredReader(name: "post_versions"): AsyncGenerator<[record: PostVersion, rowCount: number]>;
+    /** Returns a reader directly, defers downlaoding the export until the reader is used. */
+    getDeferredReader(name: "tags"): AsyncGenerator<[record: Tag, rowCount: number]>;
+    /** Returns a reader directly, defers downlaoding the export until the reader is used. */
+    getDeferredReader(name: "tag_aliases"): AsyncGenerator<[record: TagAlias, rowCount: number]>;
+    /** Returns a reader directly, defers downlaoding the export until the reader is used. */
+    getDeferredReader(name: "tag_implications"): AsyncGenerator<[record: TagImplication, rowCount: number]>;
+    /** Returns a reader directly, defers downlaoding the export until the reader is used. */
+    getDeferredReader(name: "wiki_pages"): AsyncGenerator<[record: WikiPage, rowCount: number]>;
+    /** Returns a reader directly, defers downlaoding the export until the reader is used. */
+    getDeferredReader(name: ExportName): AsyncGenerator<[record: Artist, rowCount: number]> | AsyncGenerator<[record: BulkUpdateRequest, rowCount: number]> | AsyncGenerator<[record: Pool, rowCount: number]> | AsyncGenerator<[record: Post, rowCount: number]> | AsyncGenerator<[record: PostReplacement, rowCount: number]> | AsyncGenerator<[record: PostVersion, rowCount: number]> | AsyncGenerator<[record: Tag, rowCount: number]> | AsyncGenerator<[record: TagAlias, rowCount: number]> | AsyncGenerator<[record: TagImplication, rowCount: number]> | AsyncGenerator<[record: WikiPage, rowCount: number]>  ;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     getDeferredReader(name: ExportName): AsyncGenerator<[record: any, rowCount: number]> {
         return this.getDeferred(name).read();
     }
-    
-    async getReader(name: "artists"): Promise<AsyncGenerator<[record: Artist, rowCount: number]>>;
-    async getReader(name: "bulk_update_requests"): Promise<AsyncGenerator<[record: BulkUpdateRequest, rowCount: number]>>;
-    async getReader(name: "pools"): Promise<AsyncGenerator<[record: Pool, rowCount: number]>>;
-    async getReader(name: "posts"): Promise<AsyncGenerator<[record: Post, rowCount: number]>>;
-    async getReader(name: "post_replacements"): Promise<AsyncGenerator<[record: PostReplacement, rowCount: number]>>;
-    async getReader(name: "post_versions"): Promise<AsyncGenerator<[record: PostVersion, rowCount: number]>>;
-    async getReader(name: "tags"): Promise<AsyncGenerator<[record: Tag, rowCount: number]>>;
-    async getReader(name: "tag_aliases"): Promise<AsyncGenerator<[record: TagAlias, rowCount: number]>>;
-    async getReader(name: "tag_implications"): Promise<AsyncGenerator<[record: TagImplication, rowCount: number]>>;
-    async getReader(name: "wiki_pages"): Promise<AsyncGenerator<[record: WikiPage, rowCount: number]>>;
-    async getReader(name: ExportName): Promise<AsyncGenerator<[record: Artist, rowCount: number]> | AsyncGenerator<[record: BulkUpdateRequest, rowCount: number]> | AsyncGenerator<[record: Pool, rowCount: number]> | AsyncGenerator<[record: Post, rowCount: number]> | AsyncGenerator<[record: PostReplacement, rowCount: number]> | AsyncGenerator<[record: PostVersion, rowCount: number]> | AsyncGenerator<[record: Tag, rowCount: number]> | AsyncGenerator<[record: TagAlias, rowCount: number]> | AsyncGenerator<[record: TagImplication, rowCount: number]> | AsyncGenerator<[record: WikiPage, rowCount: number]> | AsyncGenerator<[record: WikiPage, rowCount: number]>>;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     /** Returns a reader directly. */
+    async getReader(name: "artists"): Promise<AsyncGenerator<[record: Artist, rowCount: number]>>;
+    /** Returns a reader directly. */
+    async getReader(name: "bulk_update_requests"): Promise<AsyncGenerator<[record: BulkUpdateRequest, rowCount: number]>>;
+    /** Returns a reader directly. */
+    async getReader(name: "pools"): Promise<AsyncGenerator<[record: Pool, rowCount: number]>>;
+    /** Returns a reader directly. */
+    async getReader(name: "posts"): Promise<AsyncGenerator<[record: Post, rowCount: number]>>;
+    /** Returns a reader directly. */
+    async getReader(name: "post_replacements"): Promise<AsyncGenerator<[record: PostReplacement, rowCount: number]>>;
+    /** Returns a reader directly. */
+    async getReader(name: "post_versions"): Promise<AsyncGenerator<[record: PostVersion, rowCount: number]>>;
+    /** Returns a reader directly. */
+    async getReader(name: "tags"): Promise<AsyncGenerator<[record: Tag, rowCount: number]>>;
+    /** Returns a reader directly. */
+    async getReader(name: "tag_aliases"): Promise<AsyncGenerator<[record: TagAlias, rowCount: number]>>;
+    /** Returns a reader directly. */
+    async getReader(name: "tag_implications"): Promise<AsyncGenerator<[record: TagImplication, rowCount: number]>>;
+    /** Returns a reader directly. */
+    async getReader(name: "wiki_pages"): Promise<AsyncGenerator<[record: WikiPage, rowCount: number]>>;
+    /** Returns a reader directly. */
+    async getReader(name: ExportName): Promise<AsyncGenerator<[record: Artist, rowCount: number]> | AsyncGenerator<[record: BulkUpdateRequest, rowCount: number]> | AsyncGenerator<[record: Pool, rowCount: number]> | AsyncGenerator<[record: Post, rowCount: number]> | AsyncGenerator<[record: PostReplacement, rowCount: number]> | AsyncGenerator<[record: PostVersion, rowCount: number]> | AsyncGenerator<[record: Tag, rowCount: number]> | AsyncGenerator<[record: TagAlias, rowCount: number]> | AsyncGenerator<[record: TagImplication, rowCount: number]> | AsyncGenerator<[record: WikiPage, rowCount: number]>  >;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     async getReader(name: ExportName): Promise<AsyncGenerator<[record: any, rowCount: number]>> {
         return (await this.get(name)).read();
     }

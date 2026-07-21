@@ -1,8 +1,8 @@
+import type { ExportName } from "./types.js";
 import pkg from "../package.json" with { type: "json" };
+import { DBExportNamesSchema } from "e621/generated/schemas";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { DBExportNamesSchema } from "e621/generated/schemas";
-import type { ExportName } from "./types.js";
 
 export const BASE_URL = "https://e621.net/db_export/";
 export const EXPORT_NAMES = DBExportNamesSchema.enum;
