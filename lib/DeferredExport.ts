@@ -2,8 +2,9 @@ import type E621ExportDownloader from "./E621ExportDownloader.js";
 import type Export from "./Export.js";
 import { type Parser, type ExportName } from "./types.js";
 import Debug from "./Debug.js";
+import type { DefaultImporters, ExportImporter } from "./importers/index.js";
 
-export default class DeferredExport<N extends ExportName, R extends object = object, D extends object = object> {
+export default class DeferredExport<N extends ExportName, R extends object = object, D extends object = object, Imports extends object = object> {
     client: E621ExportDownloader;
     name: N;
     parser: Parser<R, D>;
@@ -17,10 +18,10 @@ export default class DeferredExport<N extends ExportName, R extends object = obj
         return date.toISOString().split("T")[0]!;
     }
 
-    private async _get(): Promise<Export<N, R, D>> {
+    private async _get(): Promise<Export<N, R, D, Imports>> {
         return this.client.get(this.name).then(r => {
             Debug(`deferred:${this.name}`, "resolved export: size=%s, updated_at=%s", r.data.file_size, r.data.updated_at);
-            return r as unknown as Export<N, R, D>;
+            return r as unknown as Export<N, R, D, Imports>;
         });
     }
 
@@ -39,9 +40,19 @@ export default class DeferredExport<N extends ExportName, R extends object = obj
         return (await this._get()).exists();
     }
 
-    async get(): Promise<Export<N, R, D>> {
+    async get(): Promise<Export<N, R, D, Imports>> {
         Debug(`deferred:${this.name}`, "creating export handle");
         return this._get();
+    }
+
+    async import<Type extends keyof (DefaultImporters & Imports)>(type: Type, options: (DefaultImporters & Imports)[Type] extends ExportImporter<infer ImportOptions> ? ImportOptions : never): Promise<void> {
+        Debug(`deferred:${this.name}`, "importing export");
+        return (await this._get()).import(type, options);
+    }
+
+    async isCorrupted(): Promise<boolean> {
+        Debug(`deferred:${this.name}`, "checking export corruption");
+        return (await this._get()).isCorrupted();
     }
 
     async * read(): AsyncGenerator<[record: D, rowCount: number]> {

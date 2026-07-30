@@ -46,6 +46,22 @@ program
     });
 
 program
+    .command("import")
+    .description("Import an export into PostgreSQL using psql")
+    .argument("<name>", "The name of the export")
+    .argument("<connection-string>", "The PostgreSQL connection string")
+    .argument("[table]", "The destination table (defaults to the export name)")
+    .action(async (name: ExportName, connectionString: string, table?: string) => {
+        const client = new E621ExportDownloader({
+            cache: options.cache ?? options.noCache === undefined ? undefined : !options.noCache
+        });
+        await (await client.get(name)).import("postgres", {
+            connectionString,
+            tableName: table ?? name
+        });
+    });
+
+program
     .command("read")
     .description("Read an export as individual JSON lines")
     .argument("<name>", "The name of the export")

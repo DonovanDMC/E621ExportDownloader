@@ -38,11 +38,12 @@ import type {
 import Debug from "./Debug.js";
 import { USER_AGENT } from "./Constants.js";
 import DeferredExport from "./DeferredExport.js";
+import { defaultImporters, type DefaultImporters } from "./importers/index.js";
 import { createE621Client, createStandalone } from "e621/standalone";
 import DBExports from "e621/modules/DbExports";
 import { type DBExport } from "e621";
 
-export interface Options<Artist extends object = ArtistData, BulkUpdateRequest extends object = BulkUpdateRequestData, Pool extends object = PoolData, Post extends object = PostData, PostReplacement extends object = PostReplacementData, PostVersion extends object = PostVersionData, Tag extends object = TagData, TagAlias extends object = TagAliasData, TagImplication extends object = TagImplicationData, WikiPage extends object = WikiPageData> {
+export interface Options<Artist extends object = ArtistData, BulkUpdateRequest extends object = BulkUpdateRequestData, Pool extends object = PoolData, Post extends object = PostData, PostReplacement extends object = PostReplacementData, PostVersion extends object = PostVersionData, Tag extends object = TagData, TagAlias extends object = TagAliasData, TagImplication extends object = TagImplicationData, WikiPage extends object = WikiPageData, Imports extends object = object> {
     /**
      * If downloaded exports should be cached for future use. They will be cached in the temporary directory, and deleted if a newer export is downloaded.
      *
@@ -61,6 +62,8 @@ export interface Options<Artist extends object = ArtistData, BulkUpdateRequest e
      * @defaultValue false
      */
     cache?: boolean;
+    /** Importers available through Export.import(). */
+    importers?: Partial<DefaultImporters> & Imports;
     /** Custom parsers. */
     parsers?: {
         artists?: Parser<RawArtist, Artist>;
@@ -76,8 +79,9 @@ export interface Options<Artist extends object = ArtistData, BulkUpdateRequest e
     };
 }
 
-interface ClientOptions<Artist extends object = ArtistData, BulkUpdateRequest extends object = BulkUpdateRequestData, Pool extends object = PoolData, Post extends object = PostData, PostReplacement extends object = PostReplacementData, PostVersion extends object = PostVersionData, Tag extends object = TagData, TagAlias extends object = TagAliasData, TagImplication extends object = TagImplicationData, WikiPage extends object = WikiPageData> {
+interface ClientOptions<Artist extends object = ArtistData, BulkUpdateRequest extends object = BulkUpdateRequestData, Pool extends object = PoolData, Post extends object = PostData, PostReplacement extends object = PostReplacementData, PostVersion extends object = PostVersionData, Tag extends object = TagData, TagAlias extends object = TagAliasData, TagImplication extends object = TagImplicationData, WikiPage extends object = WikiPageData, Imports extends object = object> {
     cache: boolean;
+    importers: DefaultImporters & Imports;
     parsers: {
         artists: Parser<RawArtist, Artist>;
         bulk_update_requests: Parser<RawBulkUpdateRequest, BulkUpdateRequest>;
@@ -92,14 +96,15 @@ interface ClientOptions<Artist extends object = ArtistData, BulkUpdateRequest ex
     };
 }
 
-export default class E621ExportDownloader<Artist extends object = ArtistData, BulkUpdateRequest extends object = BulkUpdateRequestData, Pool extends object = PoolData, Post extends object = PostData, PostReplacement extends object = PostReplacementData, PostVersion extends object = PostVersionData, Tag extends object = TagData, TagAlias extends object = TagAliasData, TagImplication extends object = TagImplicationData, WikiPage extends object = WikiPageData> {
+export default class E621ExportDownloader<Artist extends object = ArtistData, BulkUpdateRequest extends object = BulkUpdateRequestData, Pool extends object = PoolData, Post extends object = PostData, PostReplacement extends object = PostReplacementData, PostVersion extends object = PostVersionData, Tag extends object = TagData, TagAlias extends object = TagAliasData, TagImplication extends object = TagImplicationData, WikiPage extends object = WikiPageData, Imports extends object = object> {
     private _exportCache: Array<DBExport> | null = null;
     e621: ReturnType<typeof createStandalone<Array<typeof DBExports>>>;
-    options: ClientOptions<Artist, BulkUpdateRequest, Pool, Post, PostReplacement, PostVersion, Tag, TagAlias, TagImplication, WikiPage>;
-    constructor(options?: Options<Artist, BulkUpdateRequest, Pool, Post, PostReplacement, PostVersion, Tag, TagAlias, TagImplication, WikiPage>) {
+    options: ClientOptions<Artist, BulkUpdateRequest, Pool, Post, PostReplacement, PostVersion, Tag, TagAlias, TagImplication, WikiPage, Imports>;
+    constructor(options?: Options<Artist, BulkUpdateRequest, Pool, Post, PostReplacement, PostVersion, Tag, TagAlias, TagImplication, WikiPage, Imports>) {
         this.options = {
-            cache:   options?.cache ?? false,
-            parsers: {
+            cache:     options?.cache ?? false,
+            importers: { ...defaultImporters, ...options?.importers } as DefaultImporters & Imports,
+            parsers:   {
                 artists:              options?.parsers?.artists ?? parseArtist as Parser<RawArtist, Artist>,
                 bulk_update_requests: options?.parsers?.bulk_update_requests ?? parseBulkUpdateRequest as Parser<RawBulkUpdateRequest, BulkUpdateRequest>,
                 pools:                options?.parsers?.pools ?? parsePool as Parser<RawPool, Pool>,
@@ -118,27 +123,27 @@ export default class E621ExportDownloader<Artist extends object = ArtistData, Bu
     }
 
     /** Download the export and get its info. */
-    async get(name: "artists"): Promise<Export<"artists", RawArtist, Artist>>;
+    async get(name: "artists"): Promise<Export<"artists", RawArtist, Artist, Imports>>;
     /** Download the export and get its info. */
-    async get(name: "bulk_update_requests"): Promise<Export<"bulk_update_requests", RawBulkUpdateRequest, BulkUpdateRequest>>;
+    async get(name: "bulk_update_requests"): Promise<Export<"bulk_update_requests", RawBulkUpdateRequest, BulkUpdateRequest, Imports>>;
     /** Download the export and get its info. */
-    async get(name: "pools"): Promise<Export<"pools", RawPool, Pool>>;
+    async get(name: "pools"): Promise<Export<"pools", RawPool, Pool, Imports>>;
     /** Download the export and get its info. */
-    async get(name: "posts"): Promise<Export<"posts", RawPost, Post>>;
+    async get(name: "posts"): Promise<Export<"posts", RawPost, Post, Imports>>;
     /** Download the export and get its info. */
-    async get(name: "post_replacements"): Promise<Export<"post_replacements", RawPostReplacement, PostReplacement>>;
+    async get(name: "post_replacements"): Promise<Export<"post_replacements", RawPostReplacement, PostReplacement, Imports>>;
     /** Download the export and get its info. */
-    async get(name: "post_versions"): Promise<Export<"post_versions", RawPostVersion, PostVersion>>;
+    async get(name: "post_versions"): Promise<Export<"post_versions", RawPostVersion, PostVersion, Imports>>;
     /** Download the export and get its info. */
-    async get(name: "tags"): Promise<Export<"tags", RawTag, Tag>>;
+    async get(name: "tags"): Promise<Export<"tags", RawTag, Tag, Imports>>;
     /** Download the export and get its info. */
-    async get(name: "tag_aliases"): Promise<Export<"tag_aliases", RawTagAlias, TagAlias>>;
+    async get(name: "tag_aliases"): Promise<Export<"tag_aliases", RawTagAlias, TagAlias, Imports>>;
     /** Download the export and get its info. */
-    async get(name: "tag_implications"): Promise<Export<"tag_implications", RawTagImplication, TagImplication>>;
+    async get(name: "tag_implications"): Promise<Export<"tag_implications", RawTagImplication, TagImplication, Imports>>;
     /** Download the export and get its info. */
-    async get(name: "wiki_pages"): Promise<Export<"wiki_pages", RawWikiPage, WikiPage>>;
+    async get(name: "wiki_pages"): Promise<Export<"wiki_pages", RawWikiPage, WikiPage, Imports>>;
     /** Download the export and get its info. */
-    async get(name: ExportName): Promise<Export<"artists", RawArtist, Artist> | Export<"bulk_update_requests", RawBulkUpdateRequest, BulkUpdateRequest> | Export<"pools", RawPool, Pool> | Export<"posts", RawPost, Post> | Export<"post_replacements", RawPostReplacement, PostReplacement> | Export<"post_versions", RawPostVersion, PostVersion> | Export<"tag_aliases", RawTagAlias, TagAlias> | Export<"tag_implications", RawTagImplication, TagImplication> | Export<"tags", RawTag, Tag> | Export<"wiki_pages", RawWikiPage, WikiPage>>;
+    async get(name: ExportName): Promise<Export<"artists", RawArtist, Artist, Imports> | Export<"bulk_update_requests", RawBulkUpdateRequest, BulkUpdateRequest, Imports> | Export<"pools", RawPool, Pool, Imports> | Export<"posts", RawPost, Post, Imports> | Export<"post_replacements", RawPostReplacement, PostReplacement, Imports> | Export<"post_versions", RawPostVersion, PostVersion, Imports> | Export<"tag_aliases", RawTagAlias, TagAlias, Imports> | Export<"tag_implications", RawTagImplication, TagImplication, Imports> | Export<"tags", RawTag, Tag, Imports> | Export<"wiki_pages", RawWikiPage, WikiPage, Imports>>;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     async get(name: ExportName): Promise<Export<any, any, any>> {
         const data = (await this.getData()).find(d => d.name === name);
@@ -158,27 +163,27 @@ export default class E621ExportDownloader<Artist extends object = ArtistData, Bu
     }
 
     /** Defers downlaoding the export until methods are called. */
-    getDeferred(name: "artists"): DeferredExport<"artists", RawArtist, Artist>;
+    getDeferred(name: "artists"): DeferredExport<"artists", RawArtist, Artist, Imports>;
     /** Defers downlaoding the export until methods are called. */
-    getDeferred(name: "bulk_update_requests"): DeferredExport<"bulk_update_requests", RawBulkUpdateRequest, BulkUpdateRequest>;
+    getDeferred(name: "bulk_update_requests"): DeferredExport<"bulk_update_requests", RawBulkUpdateRequest, BulkUpdateRequest, Imports>;
     /** Defers downlaoding the export until methods are called. */
-    getDeferred(name: "pools"): DeferredExport<"pools", RawPool, Pool>;
+    getDeferred(name: "pools"): DeferredExport<"pools", RawPool, Pool, Imports>;
     /** Defers downlaoding the export until methods are called. */
-    getDeferred(name: "posts"): DeferredExport<"posts", RawPost, Post>;
+    getDeferred(name: "posts"): DeferredExport<"posts", RawPost, Post, Imports>;
     /** Defers downlaoding the export until methods are called. */
-    getDeferred(name: "post_replacements"): DeferredExport<"post_replacements", RawPostReplacement, PostReplacement>;
+    getDeferred(name: "post_replacements"): DeferredExport<"post_replacements", RawPostReplacement, PostReplacement, Imports>;
     /** Defers downlaoding the export until methods are called. */
-    getDeferred(name: "post_versions"): DeferredExport<"post_versions", RawPostVersion, PostVersion>;
+    getDeferred(name: "post_versions"): DeferredExport<"post_versions", RawPostVersion, PostVersion, Imports>;
     /** Defers downlaoding the export until methods are called. */
-    getDeferred(name: "tags"): DeferredExport<"tags", RawTag, Tag>;
+    getDeferred(name: "tags"): DeferredExport<"tags", RawTag, Tag, Imports>;
     /** Defers downlaoding the export until methods are called. */
-    getDeferred(name: "tag_aliases"): DeferredExport<"tag_aliases", RawTagAlias, TagAlias>;
+    getDeferred(name: "tag_aliases"): DeferredExport<"tag_aliases", RawTagAlias, TagAlias, Imports>;
     /** Defers downlaoding the export until methods are called. */
-    getDeferred(name: "tag_implications"): DeferredExport<"tag_implications", RawTagImplication, TagImplication>;
+    getDeferred(name: "tag_implications"): DeferredExport<"tag_implications", RawTagImplication, TagImplication, Imports>;
     /** Defers downlaoding the export until methods are called. */
-    getDeferred(name: "wiki_pages"): DeferredExport<"wiki_pages", RawWikiPage, WikiPage>;
+    getDeferred(name: "wiki_pages"): DeferredExport<"wiki_pages", RawWikiPage, WikiPage, Imports>;
     /** Defers downlaoding the export until methods are called. */
-    getDeferred(name: ExportName): DeferredExport<"artists", RawArtist, Artist> | DeferredExport<"bulk_update_requests", RawBulkUpdateRequest, BulkUpdateRequest> | DeferredExport<"pools", RawPool, Pool> | DeferredExport<"posts", RawPost, Post> | DeferredExport<"post_replacements", RawPostReplacement, PostReplacement> | DeferredExport<"post_versions", RawPostVersion, PostVersion> | DeferredExport<"tag_aliases", RawTagAlias, TagAlias> | DeferredExport<"tag_implications", RawTagImplication, TagImplication> | DeferredExport<"tags", RawTag, Tag> | DeferredExport<"wiki_pages", RawWikiPage, WikiPage>;
+    getDeferred(name: ExportName): DeferredExport<"artists", RawArtist, Artist, Imports> | DeferredExport<"bulk_update_requests", RawBulkUpdateRequest, BulkUpdateRequest, Imports> | DeferredExport<"pools", RawPool, Pool, Imports> | DeferredExport<"posts", RawPost, Post, Imports> | DeferredExport<"post_replacements", RawPostReplacement, PostReplacement, Imports> | DeferredExport<"post_versions", RawPostVersion, PostVersion, Imports> | DeferredExport<"tag_aliases", RawTagAlias, TagAlias, Imports> | DeferredExport<"tag_implications", RawTagImplication, TagImplication, Imports> | DeferredExport<"tags", RawTag, Tag, Imports> | DeferredExport<"wiki_pages", RawWikiPage, WikiPage, Imports>;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     getDeferred(name: ExportName): DeferredExport<any, any, any> {
         Debug("client", "creating deferred export for %s ", name);

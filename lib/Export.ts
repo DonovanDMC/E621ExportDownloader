@@ -1,24 +1,48 @@
 import { TEMP_DIR, USER_AGENT } from "./Constants.js";
 import type { Parser } from "./types.js";
 import Debug from "./Debug.js";
-import type E621ExportDownloader from "./E621ExportDownloader.js";
+import type { DefaultImporters, ExportImporter } from "./importers/index.js";
 import { parse } from "csv-parse";
 import { type DBExport } from "e621";
 import { type DbExportNames } from "e621/generated/types";
 import { pipeline } from "node:stream/promises";
 import { createReadStream, createWriteStream } from "node:fs";
+import { Transform } from "node:stream";
+import { createHash } from "node:crypto";
 import { dirname, join } from "node:path";
-import { access, constants, mkdir, unlink } from "node:fs/promises";
+import {
+    access,
+    constants,
+    mkdir,
+    rename,
+    unlink
+} from "node:fs/promises";
 import { createGunzip } from "node:zlib";
 
-export default class Export<N extends DbExportNames, R extends object = object, D extends object = object> {
-    client: E621ExportDownloader;
+export class ExportDownloadCorruptedError extends Error {
+    constructor(message: string, options?: ErrorOptions) {
+        super(message, options);
+        this.name = "ExportDownloadCorruptedError";
+    }
+}
+
+type ImportOptions<Imports extends object, Type extends keyof Imports> = Imports[Type] extends ExportImporter<infer Options> ? Options : never;
+
+export interface ExportClient<Imports extends object> {
+    options: {
+        cache: boolean;
+        importers: DefaultImporters & Imports;
+    };
+}
+
+export default class Export<N extends DbExportNames, R extends object = object, D extends object = object, Imports extends object = object> {
+    client: ExportClient<Imports>;
     data: DBExport;
     /** If undefined, no check has been performed yet */
     downloaded: boolean | undefined;
     name: N;
     parser: Parser<R, D>;
-    constructor(name: N, parser: Parser<R, D>, client: E621ExportDownloader, data: DBExport) {
+    constructor(name: N, parser: Parser<R, D>, client: ExportClient<Imports>, data: DBExport) {
         this.data = data;
         this.client = client;
         this.name = name;
@@ -29,9 +53,26 @@ export default class Export<N extends DbExportNames, R extends object = object, 
         return this.data.updated_at.split("T")[0]!;
     }
 
+    private async _isCorrupted(): Promise<boolean> {
+        const csv = parse({ columns: true });
+        const stream = createReadStream(this.filePath);
+        stream.pipe(csv);
+        try {
+            for await (const record of csv) {
+                void record;
+            }
+            return false;
+        } catch (error) {
+            Debug(`export:${this.name}`, "cached export is corrupted: %o", error);
+            stream.destroy();
+            return true;
+        }
+    }
+
     private async checkDownloaded(): Promise<boolean> {
         if (this.downloaded !== undefined) return this.downloaded;
         this.downloaded = await access(this.filePath, constants.F_OK | constants.W_OK).then(() => true, () => false);
+        if (this.downloaded && await this._isCorrupted()) this.downloaded = false;
         Debug(`export:${this.name}`, "checked downloaded state: %s", this.downloaded);
         return this.downloaded;
     }
@@ -41,7 +82,7 @@ export default class Export<N extends DbExportNames, R extends object = object, 
     }
 
     async delete(): Promise<boolean> {
-        const exists = await this.checkDownloaded();
+        const exists = await access(this.filePath, constants.F_OK).then(() => true, () => false);
         if (!exists) return false;
         Debug(`export:${this.name}`, "deleting cached export");
         await unlink(this.filePath);
@@ -63,12 +104,36 @@ export default class Export<N extends DbExportNames, R extends object = object, 
             throw new Error(`Failed to download export ${this.name}: ${response.status} ${response.statusText}`);
         }
 
+        const contentLength = response.headers.get("content-length");
+        if (contentLength !== null && Number.isSafeInteger(this.data.file_size) && Number(contentLength) !== this.data.file_size) {
+            throw new ExportDownloadCorruptedError(`Downloaded export ${this.name} has an unexpected size: expected ${this.data.file_size} bytes, received ${contentLength} bytes`);
+        }
+
         await mkdir(dirname(this.filePath), { recursive: true });
-        const tempFile = this.filePath;
-        await pipeline(response.body!, createGunzip(), createWriteStream(tempFile));
+        const tempFile = `${this.filePath}.download-${process.pid}-${Date.now()}`;
+        const checksum = createHash("sha256");
+        const hashStream = new Transform({
+            transform(chunk: Buffer, _encoding, callback): void {
+                checksum.update(chunk);
+                callback(null, chunk);
+            }
+        });
+        try {
+            await pipeline(response.body!, hashStream, createGunzip(), createWriteStream(tempFile, { flags: "wx" }));
+            const expectedChecksum = this.data.checksum.trim().toLowerCase();
+            const actualChecksum = checksum.digest("hex");
+            if (actualChecksum !== expectedChecksum) {
+                throw new ExportDownloadCorruptedError(`Downloaded export ${this.name} has an invalid checksum: expected ${expectedChecksum}, received ${actualChecksum}`);
+            }
+            await rename(tempFile, this.filePath);
+        } catch (error) {
+            await unlink(tempFile).catch(() => {});
+            if (error instanceof ExportDownloadCorruptedError) throw error;
+            throw new ExportDownloadCorruptedError(`Downloaded export ${this.name} is corrupted or incomplete`, { cause: error });
+        }
         this.downloaded = true;
-        Debug(`export:${this.name}`, "download complete: %s", tempFile);
-        return tempFile;
+        Debug(`export:${this.name}`, "download complete: %s", this.filePath);
+        return this.filePath;
     }
 
     async exists(): Promise<boolean> {
@@ -81,6 +146,30 @@ export default class Export<N extends DbExportNames, R extends object = object, 
                 Debug(`export:${this.name}`, "failed to check export existence");
                 return false;
             });
+    }
+
+    async import<Type extends keyof (DefaultImporters & Imports)>(type: Type, options: ImportOptions<DefaultImporters & Imports, Type>): Promise<void> {
+        if (!await this.exists()) {
+            throw new Error(`Export ${this.name} does not exist`);
+        }
+        if (await this.isCorrupted()) await this.delete();
+        const file = await this.download();
+        try {
+            const importer = this.client.options.importers[type];
+            if (typeof importer !== "function") throw new Error(`Import type "${String(type)}" is not configured`);
+            await importer(file, options, { name: this.name, data: this.data });
+        } finally {
+            if (!this.client.options.cache) await this.delete();
+        }
+    }
+
+    /** Returns true when the cached CSV cannot be read as a complete CSV export. */
+    async isCorrupted(): Promise<boolean> {
+        const present = await access(this.filePath, constants.F_OK | constants.R_OK).then(() => true, () => false);
+        if (!present) return false;
+        const corrupted = await this._isCorrupted();
+        if (corrupted) this.downloaded = false;
+        return corrupted;
     }
 
     async * read(): AsyncGenerator<[record: D, rowCount: number]> {

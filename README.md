@@ -43,6 +43,15 @@ const file = await exp.download();
 // delete the downloaded file, if it exists
 await exp.delete();
 
+// detect a truncated or malformed cached download
+const corrupted = await exp.isCorrupted();
+
+// stream the export into a PostgreSQL table using the configured importer
+await exp.import("postgres", {
+    connectionString: process.env.DATABASE_URL,
+    tableName: "public.posts"
+});
+
 // get all of the records as a single array, DO NOT use this for large exports, arrays with millions of items do not perform well and will likely crash your process!
 // (not to mention that the posts export is more than 5 gigabytes)
 const records = await exp.readAll();
@@ -82,6 +91,30 @@ const client = new E621ExportDownloader({
 
 Available parser keys: `artists`, `bulk_update_requests`, `pools`, `posts`, `post_replacements`, `post_versions`, `tag_aliases`, `tag_implications`, `tags`, `wiki_pages`
 
+## Importers
+
+Importers are configured on the client and selected by name on an export. The built-in PostgreSQL importer is available as `postgres`:
+
+```typescript
+const client = new E621ExportDownloader({
+    importers: {
+        archive: async (file, options: { destination: string }) => {
+            // custom import implementation
+            console.log(file, options.destination);
+        }
+    }
+});
+
+const exp = await client.get("posts");
+await exp.import("postgres", {
+    connectionString: process.env.DATABASE_URL,
+    tableName: "analytics.posts"
+});
+await exp.import("archive", { destination: "/backups/posts.csv" });
+```
+
+Custom importer option types are inferred from the importer functions supplied to the client.
+
 ## CLI
 ```bash
 # get export metadata from the e621 API as a JSON array
@@ -95,6 +128,9 @@ npx e621-export-downloader exists posts
 # download an export
 # outputs the path to the downloaded file with no trailing newline
 npx e621-export-downloader download posts
+
+# import an export into PostgreSQL (uses the table name `posts` by default)
+npx e621-export-downloader import posts "$DATABASE_URL" [table]
 
 # read an export for a given date, as individual JSON lines
 # outputs each record as a JSON string on its own line
