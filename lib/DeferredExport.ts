@@ -45,6 +45,11 @@ export default class DeferredExport<N extends ExportName, R extends object = obj
         return this._get();
     }
 
+    async getColumns(): Promise<Array<string>> {
+        Debug(`deferred:${this.name}`, "getting columns");
+        return (await this._get()).getColumns();
+    }
+
     async import<Type extends keyof (DefaultImporters & Imports)>(type: Type, options: (DefaultImporters & Imports)[Type] extends ExportImporter<infer ImportOptions> ? ImportOptions : never): Promise<void> {
         Debug(`deferred:${this.name}`, "importing export");
         return (await this._get()).import(type, options);

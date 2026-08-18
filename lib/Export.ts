@@ -7,7 +7,7 @@ import { type DBExport } from "e621";
 import { type DbExportNames } from "e621/generated/types";
 import { pipeline } from "node:stream/promises";
 import { createReadStream, createWriteStream } from "node:fs";
-import { Transform } from "node:stream";
+import { Readable, Transform } from "node:stream";
 import { createHash } from "node:crypto";
 import { dirname, join } from "node:path";
 import {
@@ -31,6 +31,7 @@ type ImportOptions<Imports extends object, Type extends keyof Imports> = Imports
 export interface ExportClient<Imports extends object> {
     options: {
         cache: boolean;
+        delimiter: string;
         importers: DefaultImporters & Imports;
     };
 }
@@ -148,6 +149,78 @@ export default class Export<N extends DbExportNames, R extends object = object, 
             });
     }
 
+    async getColumns(): Promise<Array<string>> {
+        Debug(`export:${this.name}`, "getting columns");
+        if (!await this.exists()) {
+            throw new Error(`Export ${this.name} does not exist`);
+        }
+
+        let readable: NodeJS.ReadableStream;
+        const teardown: Array<() => void> = [];
+
+        try {
+            if (await this.checkDownloaded()) {
+                Debug(`export:${this.name}`, "using cached export");
+                const stream = createReadStream(this.filePath);
+                teardown.push(() => stream.destroy());
+                readable = stream;
+            } else {
+                Debug(`export:${this.name}`, "downloading partial export to read columns");
+                const controller = new AbortController();
+                const response = await fetch(this.data.url, {
+                    headers: { "User-Agent": USER_AGENT },
+                    signal:  controller.signal
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Failed to download export ${this.name}: ${response.status} ${response.statusText}`);
+                }
+
+                if (!response.body) {
+                    throw new Error(`Export ${this.name} returned no response body`);
+                }
+                const source = Readable.fromWeb(response.body!);
+
+                const contentLength = Number(response.headers.get("content-length") ?? "0");
+                let downloaded = 0;
+                source.on("data", chunk => downloaded += (chunk as []).length);
+
+                const gunzip = createGunzip();
+                readable = source.pipe(gunzip);
+
+                teardown.push(
+                    () => controller.abort(),
+                    () => source.destroy(),
+                    () => gunzip.destroy(),
+                    () => Debug(`export:${this.name}`, `downloaded ${downloaded.toLocaleString()} bytes (out of ${contentLength.toLocaleString()} bytes)`)
+                );
+            }
+
+
+            const parser = readable.pipe(parse({
+                delimiter: this.client.options.delimiter,
+                columns:   false,
+                toLine:    1
+            }));
+
+            try {
+                for await (const record of parser) {
+                    return record as Array<string>;
+                }
+            } finally {
+                parser.destroy();
+            }
+
+            throw new Error(`Export ${this.name} is empty`);
+        } finally {
+            for (const fn of teardown) {
+                try {
+                    fn();
+                } catch {}
+            }
+        }
+    }
+
     async import<Type extends keyof (DefaultImporters & Imports)>(type: Type, options: ImportOptions<DefaultImporters & Imports, Type>): Promise<void> {
         if (!await this.exists()) {
             throw new Error(`Export ${this.name} does not exist`);
@@ -176,8 +249,9 @@ export default class Export<N extends DbExportNames, R extends object = object, 
         if (!(await this.checkDownloaded())) await this.download();
         Debug(`export:${this.name}`, "reading export");
         const csv = parse<unknown>({
-            columns:  true,
-            onRecord: (record, context) => this.parser(record as R, context)
+            columns:   true,
+            delimiter: this.client.options.delimiter,
+            onRecord:  (record, context) => this.parser(record as R, context)
         });
         await new Promise<void>(resolve => {
             const stream = createReadStream(this.filePath);

@@ -62,6 +62,11 @@ export interface Options<Artist extends object = ArtistData, BulkUpdateRequest e
      * @defaultValue false
      */
     cache?: boolean;
+    /**
+     * The delimiter for columns.
+     * @defaultValue ,
+     */
+    delimiter?: string;
     /** Importers available through Export.import(). */
     importers?: Partial<DefaultImporters> & Imports;
     /** Custom parsers. */
@@ -81,6 +86,7 @@ export interface Options<Artist extends object = ArtistData, BulkUpdateRequest e
 
 interface ClientOptions<Artist extends object = ArtistData, BulkUpdateRequest extends object = BulkUpdateRequestData, Pool extends object = PoolData, Post extends object = PostData, PostReplacement extends object = PostReplacementData, PostVersion extends object = PostVersionData, Tag extends object = TagData, TagAlias extends object = TagAliasData, TagImplication extends object = TagImplicationData, WikiPage extends object = WikiPageData, Imports extends object = object> {
     cache: boolean;
+    delimiter: string;
     importers: DefaultImporters & Imports;
     parsers: {
         artists: Parser<RawArtist, Artist>;
@@ -103,6 +109,7 @@ export default class E621ExportDownloader<Artist extends object = ArtistData, Bu
     constructor(options?: Options<Artist, BulkUpdateRequest, Pool, Post, PostReplacement, PostVersion, Tag, TagAlias, TagImplication, WikiPage, Imports>) {
         this.options = {
             cache:     options?.cache ?? false,
+            delimiter: options?.delimiter ?? ",",
             importers: { ...defaultImporters, ...options?.importers } as DefaultImporters & Imports,
             parsers:   {
                 artists:              options?.parsers?.artists ?? parseArtist as Parser<RawArtist, Artist>,
@@ -150,6 +157,11 @@ export default class E621ExportDownloader<Artist extends object = ArtistData, Bu
         if (!data) throw new Error(`Export data for "${name}" not found.`);
         Debug("client", "creating export for %s (size=%s, updated_at=%s)", name, data.file_size, data.updated_at);
         return new Export(name, this.options.parsers[name] as never, this as never, data);
+    }
+
+    async getColumns(name: ExportName): Promise<Array<string>> {
+        Debug("client", "Getting columns for %s ", name);
+        return this.getDeferred(name).getColumns();
     }
 
     /** Gat an export's api data. */

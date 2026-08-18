@@ -36,6 +36,9 @@ const { file_size, updated_at, url } = exp.data;
 // check if the export exists
 const exists = await exp.exists();
 
+// get the columns of an export
+const columns = await exp.getColumns();
+
 // download the export, returns the file path — not required before reading
 // if you move/remove the file, do not reuse the wrapper!
 const file = await exp.download();
@@ -125,6 +128,10 @@ npx e621-export-downloader data
 # outputs "true" or "false" with no trailing newline
 npx e621-export-downloader exists posts
 
+# get the columns of an export
+# outputs a comma separated list with no trailing newline
+npx e621-export-downloader get-columns posts
+
 # download an export
 # outputs the path to the downloaded file with no trailing newline
 npx e621-export-downloader download posts
@@ -145,4 +152,5 @@ npx e621-export-downloader --help
 npx e621-export-downloader --version
 npx e621-export-downloader --cache # enable caching
 npx e621-export-downloader --no-cache # disable caching (default)
+npx e621-export-downloader --dilemeter , # set the column dilemeter
 ```

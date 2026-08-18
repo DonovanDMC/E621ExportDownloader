@@ -4,13 +4,14 @@ import { type ExportName } from "./types.js";
 import pkg from "../package.json" with { type: "json" };
 import { program } from "commander";
 
-const options = program.storeOptionsAsProperties<{ cache?: boolean; noCache?: boolean; }>();
+const options = program.storeOptionsAsProperties<{ cache?: boolean; delimiter?: string; noCache?: boolean; }>();
 
 program.name("e621-export-downloader")
     .description(pkg.description)
     .version(pkg.version)
     .option("--cache", "If downloaded exports should be cached for future use")
-    .option("--no-cache", "Disable caching of downloaded exports (default)");
+    .option("--no-cache", "Disable caching of downloaded exports (default)")
+    .option("--delimiter", "The delimiter for columns.");
 
 program
     .command("data")
@@ -27,10 +28,24 @@ program
     .argument("<name>", "The name of the export")
     .action(async (name: ExportName) => {
         const client = new E621ExportDownloader({
-            cache: options.cache ?? options.noCache === undefined ? undefined : !options.noCache
+            cache:     options.cache ?? options.noCache === undefined ? undefined : !options.noCache,
+            delimiter: options.delimiter
         });
         const exists = await (await client.get(name)).exists();
         process.stdout.write(String(exists));
+    });
+
+program
+    .command("get-columns")
+    .description("Get the columns of an export")
+    .argument("<name>", "The name of the export")
+    .action(async (name: ExportName) => {
+        const client = new E621ExportDownloader({
+            cache:     options.cache ?? options.noCache === undefined ? undefined : !options.noCache,
+            delimiter: options.delimiter
+        });
+        const columns = await (await client.get(name)).getColumns();
+        process.stdout.write(columns.join(","));
     });
 
 program
@@ -39,7 +54,8 @@ program
     .argument("<name>", "The name of the export")
     .action(async (name: ExportName) => {
         const client = new E621ExportDownloader({
-            cache: options.cache ?? options.noCache === undefined ? undefined : !options.noCache
+            cache:     options.cache ?? options.noCache === undefined ? undefined : !options.noCache,
+            delimiter: options.delimiter
         });
         const path = await (await client.get(name)).download();
         process.stdout.write(path);
@@ -53,7 +69,8 @@ program
     .argument("[table]", "The destination table (defaults to the export name)")
     .action(async (name: ExportName, connectionString: string, table?: string) => {
         const client = new E621ExportDownloader({
-            cache: options.cache ?? options.noCache === undefined ? undefined : !options.noCache
+            cache:     options.cache ?? options.noCache === undefined ? undefined : !options.noCache,
+            delimiter: options.delimiter
         });
         await (await client.get(name)).import("postgres", {
             connectionString,
@@ -67,7 +84,8 @@ program
     .argument("<name>", "The name of the export")
     .action(async (name: ExportName) => {
         const client = new E621ExportDownloader({
-            cache: options.cache ?? options.noCache === undefined ? undefined : !options.noCache
+            cache:     options.cache ?? options.noCache === undefined ? undefined : !options.noCache,
+            delimiter: options.delimiter
         });
         for await (const [line] of (await client.get(name)).read()) {
             process.stdout.write(JSON.stringify(line));
@@ -81,7 +99,8 @@ program
     .argument("<name>", "The name of the export")
     .action(async (name: ExportName) => {
         const client = new E621ExportDownloader({
-            cache: options.cache ?? options.noCache === undefined ? undefined : !options.noCache
+            cache:     options.cache ?? options.noCache === undefined ? undefined : !options.noCache,
+            delimiter: options.delimiter
         });
         let first = true;
         process.stdout.write("[");
