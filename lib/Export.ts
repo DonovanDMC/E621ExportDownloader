@@ -4,7 +4,7 @@ import Debug from "./Debug.js";
 import type { DefaultImporters, ExportImporter } from "./importers/index.js";
 import { parse } from "csv-parse";
 import { type DBExport } from "e621";
-import { type DbExportNames } from "e621/generated/types";
+import { type DBExportName } from "e621/generated/types";
 import { pipeline } from "node:stream/promises";
 import { createReadStream, createWriteStream } from "node:fs";
 import { Readable, Transform } from "node:stream";
@@ -36,7 +36,7 @@ export interface ExportClient<Imports extends object> {
     };
 }
 
-export default class Export<N extends DbExportNames, R extends object = object, D extends object = object, Imports extends object = object> {
+export default class Export<N extends DBExportName, R extends object = object, D extends object = object, Imports extends object = object> {
     client: ExportClient<Imports>;
     data: DBExport;
     /** If undefined, no check has been performed yet */

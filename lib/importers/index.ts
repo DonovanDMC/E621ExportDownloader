@@ -1,12 +1,12 @@
 import postgresImporter from "./postgres.js";
 import type { DBExport } from "e621";
-import type { DbExportNames } from "e621/generated/types";
+import type { DBExportName } from "e621/generated/types";
 
 export { default as importPostgres, type PostgresImportOptions } from "./postgres.js";
 
 export interface ExportImportContext {
     data: DBExport;
-    name: DbExportNames;
+    name: DBExportName;
 }
 
 export type ExportImporter<Options extends object = object> = (filePath: string, options: Options, context: ExportImportContext) => Promise<void>;

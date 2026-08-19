@@ -1,5 +1,5 @@
 import type { CastingContext } from "csv-parse";
-import {   type Ratings as Rating, type PoolCategories as PoolCategory } from "e621/generated/types";
+import {   type Rating, type PoolCategory } from "e621/generated/types";
 
 export type TF = "t" | "f";
 export type Parser<R extends object, D extends object> = (this: void, record: R, context: CastingContext) => D | null | undefined;
@@ -178,4 +178,4 @@ export interface RawWikiPage {
     updater_id: string;
 }
 
-export { DbExportNames as ExportName, TagRequestStatuses as TagRelationshipStatus, Ratings as Rating, PoolCategories as PoolCategory } from "e621/generated/types";
+export { DBExportName as ExportName, TagRequestStatus as TagRelationshipStatus, Rating, PoolCategory } from "e621/generated/types";
